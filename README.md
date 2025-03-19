@@ -1,67 +1,109 @@
 # PCAP编辑器
 
-这是一个用于读取、修改和保存pcap文件的Python工具。它允许您修改数据包的各种属性，如源/目标IP地址、端口、TTL和TOS值等。
+PCAP编辑器是一个用于查看和修改PCAP（网络数据包捕获）文件的图形化工具。它提供了直观的界面，让用户能够轻松地查看、分析和修改网络数据包。
 
-## 安装依赖
+## 功能特点
 
-在使用此工具前，请确保已安装所需的依赖：
+- 图形化界面，操作简单直观
+- 支持查看和修改PCAP/PCAPNG文件
+- 提供数据包预览和详细信息查看
+- 支持修改IP地址、端口号、TTL和TOS值
+- 支持修改TCP/UDP负载数据
+- 提供数据包统计分析功能
+- 实时处理进度显示
+- 详细的操作日志记录
 
-```bash
-pip3 install scapy
-```
+## 主要功能模块
+
+### 1. 文件操作
+- 支持打开PCAP/PCAPNG文件
+- 支持保存修改后的文件
+- 自动生成输出文件名
+
+### 2. IP修改
+- 修改源IP地址
+- 修改目标IP地址
+- 修改TTL值
+- 修改TOS值
+
+### 3. 端口修改
+- 修改TCP/UDP源端口
+- 修改TCP/UDP目标端口
+
+### 4. Payload修改
+- 支持指定偏移量和长度
+- 支持十六进制数据输入
+- 可选择是否启用Payload修改
+
+### 5. 数据包预览
+- 显示数据包列表
+- 显示详细的数据包信息
+- 支持十六进制和ASCII格式查看
+
+### 6. 统计分析
+- 协议分布统计
+- IP地址使用统计
+- 端口使用统计
+- TTL值分布统计
 
 ## 使用方法
 
-基本用法：
+1. 打开程序
+   - 双击运行PCAP编辑器可执行文件
 
-```bash
-python3 pcap_editor.py -r input.pcap -w output.pcap [options]
-```
+2. 选择文件
+   - 点击"浏览..."按钮选择输入PCAP文件
+   - 程序会自动生成输出文件名，也可以手动指定
 
-### 可用选项
+3. 修改设置
+   - 在IP选项卡中设置IP相关修改
+   - 在端口选项卡中设置端口相关修改
+   - 在Payload修改选项卡中设置数据修改
 
-- `-r, --read`: 输入pcap文件路径（必需）
-- `-w, --write`: 输出pcap文件路径（必需）
-- `--src-ip`: 修改源IP地址（格式：原IP:新IP，例如：`--src-ip 192.168.1.1:10.0.0.1`）
-- `--dst-ip`: 修改目标IP地址（格式：原IP:新IP，例如：`--dst-ip 192.168.1.2:10.0.0.2`）
-- `--src-port`: 修改源端口（格式：原端口:新端口，例如：`--src-port 80:8080`）
-- `--dst-port`: 修改目标端口（格式：原端口:新端口，例如：`--dst-port 80:8080`）
-- `--ttl`: 修改TTL值（格式：原TTL:新TTL，例如：`--ttl 64:128`）
-- `--tos`: 修改TOS值（格式：原TOS:新TOS，例如：`--tos 0:16`）
-- `--offset`: 修改TCP/UDP数据包payload的偏移量（整数，例如：`--offset 10`）
-- `--length`: 修改TCP/UDP数据包payload的长度（整数，例如：`--length 4`）
-- `--data`: 修改TCP/UDP数据包payload的新值（十六进制字符串，例如：`--data AABBCCDD`）
+4. 预览数据包
+   - 切换到"数据包预览"选项卡
+   - 点击"加载数据包预览"按钮
+   - 在列表中选择数据包查看详情
 
-## 示例
+5. 查看统计信息
+   - 切换到"统计信息"选项卡
+   - 点击"生成统计信息"按钮
 
-1. 修改源IP地址：
+6. 处理文件
+   - 设置完成后点击"处理PCAP文件"按钮
+   - 等待处理完成
+   - 查看日志了解处理结果
 
-```bash
-python3 pcap_editor.py -r input.pcap -w output.pcap --src-ip 192.168.1.1:10.0.0.1
-```
+## 输入格式说明
 
-2. 修改目标端口：
-
-```bash
-python3 pcap_editor.py -r input.pcap -w output.pcap --dst-port 80:8080
-```
-
-3. 同时修改多个属性：
-
-```bash
-python3 pcap_editor.py -r input.pcap -w output.pcap --src-ip 192.168.1.1:10.0.0.1 --dst-ip 192.168.1.2:10.0.0.2 --ttl 64:128
-```
-
-4. 使用偏移量和长度修改TCP/UDP报文的payload：
-
-```bash
-python3 pcap_editor.py -r input.pcap -w output.pcap --offset 10 --length 4 --data AABBCCDD
-```
-
-这个命令会修改所有TCP和UDP报文中payload的第10-13字节（从0开始计数），将其替换为十六进制值AABBCCDD。
+- IP地址修改：`原IP:新IP`，例如 `192.168.1.1:10.0.0.1`
+- 端口修改：`原端口:新端口`，例如 `80:8080`
+- TTL修改：`原值:新值`，例如 `64:128`
+- TOS修改：`原值:新值`，例如 `0:16`
+- Payload数据：十六进制格式，例如 `AABBCC`
 
 ## 注意事项
 
-- 此工具仅修改与指定条件匹配的数据包
-- 修改数据包后，校验和会自动重新计算
-- 处理大型pcap文件可能需要较长时间
+1. 处理大文件时可能需要较长时间，请耐心等待
+2. 建议在修改前备份原始文件
+3. 确保有足够的磁盘空间保存修改后的文件
+4. 修改后的文件会自动重新计算校验和
+
+## 打包
+```
+pip install pyinstaller
+pyinstaller pcap_editor.spec
+```
+
+## 系统要求
+
+- 操作系统：Windows/macOS/Linux
+- Python 3.6或更高版本（如果从源码运行）
+- 必要的Python包：
+  - PyQt5
+  - scapy
+  - pyinstaller（仅打包需要）
+
+## 许可证
+
+MIT License
