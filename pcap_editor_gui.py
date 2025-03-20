@@ -24,14 +24,16 @@ from scapy.all import rdpcap, wrpcap, IP, TCP, UDP, Raw, ICMP, Ether
 class PacketProcessingThread(QThread):
     """用于后台处理数据包的线程"""
     progress_update = pyqtSignal(int, int)  # 当前处理数量, 总数
-    finished_signal = pyqtSignal(int)  # 修改的数据包数量
+    finished_signal = pyqtSignal(int, int)  # 修改的数据包数量, 修复的数据包数量
     error_signal = pyqtSignal(str)  # 错误信息
+    log_signal = pyqtSignal(str)  # 日志信息
 
-    def __init__(self, input_file, output_file, params):
+    def __init__(self, input_file, output_file, params=None, repair_mode=False):
         super().__init__()
         self.input_file = input_file
         self.output_file = output_file
         self.params = params
+        self.repair_mode = repair_mode
 
     def run(self):
         try:
@@ -41,30 +43,50 @@ class PacketProcessingThread(QThread):
             # 统计信息
             total_packets = len(packets)
             modified_packets = 0
+            repaired_packets = 0
             
-            # 创建一个类似于args的对象
-            class Args:
-                pass
+            if self.repair_mode:
+                # 修复模式
+                # 创建新的数据包列表
+                new_packets = []
+                for i, packet in enumerate(packets):
+                    if not Ether in packet:
+                        # 添加默认的以太网头
+                        ether = Ether(src="00:00:00:00:00:00", dst="00:00:00:00:00:00")
+                        new_packet = ether/packet.payload
+                        new_packets.append(new_packet)
+                        repaired_packets += 1
+                        self.log_signal.emit(f"已修复数据包 #{i+1} 的二层信息")
+                    else:
+                        new_packets.append(packet)
+                    # 更新进度
+                    if (i + 1) % 10 == 0 or i == total_packets - 1:
+                        self.progress_update.emit(i + 1, total_packets)
+                # 保存修改后的数据包
+                wrpcap(self.output_file, new_packets)
+            else:
             
-            args = Args()
-            for key, value in self.params.items():
-                setattr(args, key, value)
-            
-            # 修改数据包
-            for i, packet in enumerate(packets):
-                if modify_packet(packet, args):
-                    modified_packets += 1
+                # 创建一个类似于args的对象
+                class Args:
+                    pass
                 
-                # 每处理10个数据包更新一次进度
-                if (i + 1) % 10 == 0 or i == total_packets - 1:
-                    self.progress_update.emit(i + 1, total_packets)
-            
-            # 保存修改后的数据包
-            wrpcap(self.output_file, packets)
-            
+                args = Args()
+                for key, value in self.params.items():
+                    setattr(args, key, value)
+                
+                # 修改数据包
+                for i, packet in enumerate(packets):
+                    if modify_packet(packet, args):
+                        modified_packets += 1
+                    
+                    # 每处理10个数据包更新一次进度
+                    if (i + 1) % 10 == 0 or i == total_packets - 1:
+                        self.progress_update.emit(i + 1, total_packets)
+                # 保存修改后的数据包
+                wrpcap(self.output_file, packets)
+
             # 发送完成信号
-            self.finished_signal.emit(modified_packets)
-            
+            self.finished_signal.emit(modified_packets, repaired_packets)
         except Exception as e:
             self.error_signal.emit(str(e))
 
@@ -102,6 +124,7 @@ class PCAPEditorGUI(QMainWindow):
         main_layout = QVBoxLayout(central_widget)
         
         # 文件选择区域
+        # 在文件选择区域添加修复按钮
         file_group = QGroupBox("文件选择")
         file_layout = QFormLayout()
         
@@ -122,6 +145,13 @@ class PCAPEditorGUI(QMainWindow):
         output_file_layout.addWidget(self.output_file_edit)
         output_file_layout.addWidget(self.output_file_btn)
         file_layout.addRow("输出PCAP文件:", output_file_layout)
+        
+        # 添加修复按钮
+        repair_layout = QHBoxLayout()
+        self.repair_btn = QPushButton("修复二层信息")
+        self.repair_btn.clicked.connect(self.repair_layer2)
+        repair_layout.addWidget(self.repair_btn)
+        file_layout.addRow(repair_layout)
         
         file_group.setLayout(file_layout)
         main_layout.addWidget(file_group)
@@ -920,6 +950,53 @@ class PCAPEditorGUI(QMainWindow):
             except Exception as e:
                 self.log(f"保存数据包时出错: {str(e)}")
                 QMessageBox.critical(self, "错误", f"保存数据包时出错:\n{str(e)}")
+
+    def repair_layer2(self):
+        """修复PCAP文件的二层信息"""
+        input_file = self.input_file_edit.text()
+        output_file = self.output_file_edit.text()
+        
+        if not input_file:
+            QMessageBox.warning(self, "错误", "请选择输入PCAP文件")
+            return
+        
+        if not output_file:
+            QMessageBox.warning(self, "错误", "请选择输出PCAP文件")
+            return
+        
+        if not os.path.exists(input_file):
+            QMessageBox.warning(self, "错误", f"输入文件不存在: {input_file}")
+            return
+        
+        # 禁用修复按钮
+        self.repair_btn.setEnabled(False)
+        self.progress_label.setText("正在修复...")
+        
+        # 清空日志
+        self.log_text.clear()
+        
+        # 记录开始修复的日志
+        self.log(f"开始修复PCAP文件的二层信息: {input_file}")
+        self.log(f"输出文件: {output_file}")
+        
+        # 创建并启动处理线程
+        self.processing_thread = PacketProcessingThread(input_file, output_file, repair_mode=True)
+        self.processing_thread.progress_update.connect(self.update_progress)
+        self.processing_thread.finished_signal.connect(self.repair_finished)
+        self.processing_thread.error_signal.connect(self.processing_error)
+        self.processing_thread.log_signal.connect(self.log)
+        self.processing_thread.start()
+    
+    def repair_finished(self, modified_count, repaired_count):
+        """修复完成的回调"""
+        self.repair_btn.setEnabled(True)
+        status = f"修复完成! 修复了 {repaired_count} 个数据包的二层信息"
+        self.progress_label.setText(status)
+        self.log(status)
+        
+        QMessageBox.information(self, "修复完成", 
+                              f"成功修复PCAP文件!\n"
+                              f"修复了 {repaired_count} 个数据包的二层信息")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
