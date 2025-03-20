@@ -76,6 +76,13 @@ class PCAPEditorGUI(QMainWindow):
         super().__init__()
         self.packets = None  # 存储加载的数据包
         self.initUI()
+
+    def on_tab_changed(self, index):
+        """处理标签页切换事件"""
+        # 获取当前标签页的标题
+        current_tab = self.sender().tabText(index)
+        # 如果是数据包预览标签页，禁用处理按钮
+        self.process_btn.setEnabled(current_tab != "数据包预览")
         
     def initUI(self):
         # 设置窗口标题和大小
@@ -119,8 +126,17 @@ class PCAPEditorGUI(QMainWindow):
         file_group.setLayout(file_layout)
         main_layout.addWidget(file_group)
         
+        # 操作按钮 - 移到前面创建
+        button_layout = QHBoxLayout()
+        self.process_btn = QPushButton("处理PCAP文件")
+        self.process_btn.clicked.connect(self.process_pcap)
+        self.process_btn.setMinimumHeight(40)
+        button_layout.addWidget(self.process_btn)
+        
         # 创建选项卡
         tabs = QTabWidget()
+        # 连接标签页切换信号
+        tabs.currentChanged.connect(self.on_tab_changed)
         
         # IP修改选项卡之前添加MAC修改选项卡
         mac_tab = QWidget()
@@ -199,6 +215,7 @@ class PCAPEditorGUI(QMainWindow):
         
         # 添加数据包预览选项卡
         preview_tab = QWidget()
+        # 在预览布局中添加应用更改按钮
         preview_layout = QVBoxLayout(preview_tab)
         
         # 添加加载预览按钮
@@ -227,6 +244,11 @@ class PCAPEditorGUI(QMainWindow):
         packet_details_layout.addWidget(self.packet_details_text)
         packet_details_group.setLayout(packet_details_layout)
         preview_layout.addWidget(packet_details_group)
+        
+        # 添加应用更改按钮
+        apply_changes_btn = QPushButton("应用更改")
+        apply_changes_btn.clicked.connect(self.apply_packet_changes)
+        preview_layout.addWidget(apply_changes_btn)
         
         # 连接表格选择事件
         self.packet_table.itemSelectionChanged.connect(self.show_packet_details)
@@ -266,14 +288,7 @@ class PCAPEditorGUI(QMainWindow):
         progress_layout.addWidget(self.progress_label)
         main_layout.addLayout(progress_layout)
         
-        # 操作按钮
-        button_layout = QHBoxLayout()
-        
-        self.process_btn = QPushButton("处理PCAP文件")
-        self.process_btn.clicked.connect(self.process_pcap)
-        self.process_btn.setMinimumHeight(40)
-        button_layout.addWidget(self.process_btn)
-        
+        # 添加按钮布局
         main_layout.addLayout(button_layout)
         
         # 初始化处理线程
@@ -281,7 +296,7 @@ class PCAPEditorGUI(QMainWindow):
         
         # 显示窗口
         self.show()
-        
+ 
     def browse_input_file(self):
         """浏览并选择输入文件"""
         file_path, _ = QFileDialog.getOpenFileName(
@@ -824,6 +839,34 @@ class PCAPEditorGUI(QMainWindow):
                 
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"修改失败: {str(e)}")
+
+    def apply_packet_changes(self):
+        """应用数据包更改"""
+        if not self.packets:
+            QMessageBox.warning(self, "警告", "没有可以保存的数据包")
+            return
+            
+        output_file = self.output_file_edit.text()
+        if not output_file:
+            QMessageBox.warning(self, "警告", "请先选择输出文件")
+            return
+            
+        reply = QMessageBox.question(
+            self,
+            "确认保存",
+            f"确定要将修改后的数据包保存到:\n{output_file}?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                wrpcap(output_file, self.packets)
+                self.log(f"已保存修改后的数据包到: {output_file}")
+                QMessageBox.information(self, "保存成功", f"已保存修改后的数据包到:\n{output_file}")
+            except Exception as e:
+                self.log(f"保存数据包时出错: {str(e)}")
+                QMessageBox.critical(self, "错误", f"保存数据包时出错:\n{str(e)}")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
