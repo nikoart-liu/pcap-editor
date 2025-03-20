@@ -17,7 +17,7 @@ from PyQt5.QtGui import QIcon, QFont
 
 # 导入原有的pcap_editor模块功能
 from pcap_editor import modify_packet, parse_replacement
-from scapy.all import rdpcap, wrpcap, IP, TCP, UDP, Raw, ICMP
+from scapy.all import rdpcap, wrpcap, IP, TCP, UDP, Raw, ICMP, Ether
 
 
 class PacketProcessingThread(QThread):
@@ -121,16 +121,34 @@ class PCAPEditorGUI(QMainWindow):
         # 创建选项卡
         tabs = QTabWidget()
         
+        # IP修改选项卡之前添加MAC修改选项卡
+        mac_tab = QWidget()
+        mac_layout = QFormLayout(mac_tab)
+        
+        self.src_mac_edit = QLineEdit()
+        self.src_mac_edit.setPlaceholderText("格式: 00:11:22:33:44:55>aa:bb:cc:dd:ee:ff")
+        self.src_mac_edit.setMinimumWidth(300)
+        mac_layout.addRow("修改源MAC:", self.src_mac_edit)
+        
+        self.dst_mac_edit = QLineEdit()
+        self.dst_mac_edit.setPlaceholderText("格式: 00:11:22:33:44:55>aa:bb:cc:dd:ee:ff")
+        self.dst_mac_edit.setMinimumWidth(300)
+        mac_layout.addRow("修改目标MAC:", self.dst_mac_edit)
+        
+        tabs.addTab(mac_tab, "MAC选项")
+        
         # IP修改选项卡
         ip_tab = QWidget()
         ip_layout = QFormLayout(ip_tab)
         
         self.src_ip_edit = QLineEdit()
         self.src_ip_edit.setPlaceholderText("格式: 192.168.1.1:10.0.0.1")
+        self.src_ip_edit.setMinimumWidth(300)
         ip_layout.addRow("修改源IP:", self.src_ip_edit)
         
         self.dst_ip_edit = QLineEdit()
         self.dst_ip_edit.setPlaceholderText("格式: 192.168.1.2:10.0.0.2")
+        self.dst_ip_edit.setMinimumWidth(300)
         ip_layout.addRow("修改目标IP:", self.dst_ip_edit)
         
         self.ttl_edit = QLineEdit()
@@ -169,7 +187,7 @@ class PCAPEditorGUI(QMainWindow):
         self.length_spin.setRange(1, 9999)
         payload_layout.addRow("长度:", self.length_spin)
         
-        self.data_edit = QLineEdit()
+        self.data_edit = QTextEdit()
         self.data_edit.setPlaceholderText("十六进制数据，如: AABBCC")
         payload_layout.addRow("新数据(十六进制):", self.data_edit)
         
@@ -303,6 +321,8 @@ class PCAPEditorGUI(QMainWindow):
         
         # 收集参数
         params = {
+            'src_mac': self.src_mac_edit.text() if self.src_mac_edit.text() else None,
+            'dst_mac': self.dst_mac_edit.text() if self.dst_mac_edit.text() else None,
             'src_ip': self.src_ip_edit.text() if self.src_ip_edit.text() else None,
             'dst_ip': self.dst_ip_edit.text() if self.dst_ip_edit.text() else None,
             'src_port': self.src_port_edit.text() if self.src_port_edit.text() else None,
@@ -385,9 +405,10 @@ class PCAPEditorGUI(QMainWindow):
             # 读取pcap文件
             self.packets = rdpcap(input_file)
             
-            # 填充表格
+            # 设置表格行数
             self.packet_table.setRowCount(len(self.packets))
             
+            # 填充表格
             for i, packet in enumerate(self.packets):
                 # 序号
                 self.packet_table.setItem(i, 0, QTableWidgetItem(str(i+1)))
@@ -396,13 +417,21 @@ class PCAPEditorGUI(QMainWindow):
                 time_str = packet.time if hasattr(packet, 'time') else "-"
                 self.packet_table.setItem(i, 1, QTableWidgetItem(str(time_str)))
                 
-                # 源IP和目标IP
-                if IP in packet:
-                    self.packet_table.setItem(i, 2, QTableWidgetItem(packet[IP].src))
-                    self.packet_table.setItem(i, 3, QTableWidgetItem(packet[IP].dst))
+                # MAC地址
+                if Ether in packet:
+                    self.packet_table.setItem(i, 2, QTableWidgetItem(packet[Ether].src))
+                    self.packet_table.setItem(i, 3, QTableWidgetItem(packet[Ether].dst))
                 else:
                     self.packet_table.setItem(i, 2, QTableWidgetItem("-"))
                     self.packet_table.setItem(i, 3, QTableWidgetItem("-"))
+                
+                # IP地址
+                if IP in packet:
+                    self.packet_table.setItem(i, 4, QTableWidgetItem(packet[IP].src))
+                    self.packet_table.setItem(i, 5, QTableWidgetItem(packet[IP].dst))
+                else:
+                    self.packet_table.setItem(i, 4, QTableWidgetItem("-"))
+                    self.packet_table.setItem(i, 5, QTableWidgetItem("-"))
                 
                 # 协议
                 proto = "-"
@@ -412,10 +441,10 @@ class PCAPEditorGUI(QMainWindow):
                     proto = "UDP"
                 elif ICMP in packet:
                     proto = "ICMP"
-                self.packet_table.setItem(i, 4, QTableWidgetItem(proto))
+                self.packet_table.setItem(i, 6, QTableWidgetItem(proto))
                 
                 # 长度
-                self.packet_table.setItem(i, 5, QTableWidgetItem(str(len(packet))))
+                self.packet_table.setItem(i, 7, QTableWidgetItem(str(len(packet))))
                 
                 # 信息
                 info = "-"
@@ -428,7 +457,12 @@ class PCAPEditorGUI(QMainWindow):
                     sport = packet[UDP].sport
                     dport = packet[UDP].dport
                     info = f"UDP {sport} → {dport}"
-                self.packet_table.setItem(i, 6, QTableWidgetItem(info))
+                elif ICMP in packet:
+                    info = "ICMP"
+                self.packet_table.setItem(i, 8, QTableWidgetItem(info))
+
+            # 调整列宽
+            self.packet_table.resizeColumnsToContents()
             
             self.log(f"已加载 {len(self.packets)} 个数据包")
             self.progress_label.setText(f"已加载 {len(self.packets)} 个数据包")
@@ -638,6 +672,36 @@ class PCAPEditorGUI(QMainWindow):
                 self.stats_text.append("<ul>")
                 for ttl, count in sorted(ttl_values.items()):
                     self.stats_text.append(f"<li>TTL {ttl}: {count} 个数据包 ({count/total_packets*100:.1f}%)</li>")
+                self.stats_text.append("</ul>")
+            
+            # 添加MAC地址统计
+            if any(Ether in p for p in self.packets):
+                self.stats_text.append("<h4>MAC地址统计</h4>")
+                
+                # 源MAC统计
+                src_macs = {}
+                for p in self.packets:
+                    if Ether in p:
+                        src_mac = p[Ether].src
+                        src_macs[src_mac] = src_macs.get(src_mac, 0) + 1
+                
+                self.stats_text.append("<p><b>前10个源MAC地址:</b></p>")
+                self.stats_text.append("<ul>")
+                for mac, count in sorted(src_macs.items(), key=lambda x: x[1], reverse=True)[:10]:
+                    self.stats_text.append(f"<li>{mac}: {count} 个数据包 ({count/total_packets*100:.1f}%)</li>")
+                self.stats_text.append("</ul>")
+                
+                # 目标MAC统计
+                dst_macs = {}
+                for p in self.packets:
+                    if Ether in p:
+                        dst_mac = p[Ether].dst
+                        dst_macs[dst_mac] = dst_macs.get(dst_mac, 0) + 1
+                
+                self.stats_text.append("<p><b>前10个目标MAC地址:</b></p>")
+                self.stats_text.append("<ul>")
+                for mac, count in sorted(dst_macs.items(), key=lambda x: x[1], reverse=True)[:10]:
+                    self.stats_text.append(f"<li>{mac}: {count} 个数据包 ({count/total_packets*100:.1f}%)</li>")
                 self.stats_text.append("</ul>")
             
             self.log("统计信息生成完成")

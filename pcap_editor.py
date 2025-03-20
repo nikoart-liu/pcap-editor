@@ -45,21 +45,50 @@ def parse_arguments():
 
 def parse_replacement(replacement_str):
     """解析替换字符串，格式为 'old:new' 或 ':new'（直接替换）"""
-    if not replacement_str or ':' not in replacement_str:
+    if not replacement_str:
         return None, None
     
-    parts = replacement_str.split(':', 1)
-    if len(parts) == 2:
-        old_val, new_val = parts
+    # 检查是否是MAC地址替换（通过检查冒号数量判断）
+    colon_count = replacement_str.count(':')
+    if colon_count > 1:  # MAC地址格式
+        # MAC地址格式应该是 "aa:bb:cc:dd:ee:ff>11:22:33:44:55:66"
+        if '>' not in replacement_str:
+            return None, None
+        old_val, new_val = replacement_str.split('>', 1)
         old_val = old_val.strip()
         new_val = new_val.strip()
         return old_val if old_val else None, new_val
+    else:  # 普通IP/端口替换
+        if ':' not in replacement_str:
+            return None, None
+        parts = replacement_str.split(':', 1)
+        if len(parts) == 2:
+            old_val, new_val = parts
+            old_val = old_val.strip()
+            new_val = new_val.strip()
+            return old_val if old_val else None, new_val
     return None, None
 
 
 def modify_packet(packet, args):
     """根据参数修改数据包"""
     modified = False
+    
+    # 处理以太网层
+    if Ether in packet:
+        # 修改源MAC
+        if args.src_mac:
+            old_mac, new_mac = parse_replacement(args.src_mac)
+            if old_mac and new_mac and packet[Ether].src == old_mac:
+                packet[Ether].src = new_mac
+                modified = True
+        
+        # 修改目标MAC
+        if args.dst_mac:
+            old_mac, new_mac = parse_replacement(args.dst_mac)
+            if old_mac and new_mac and packet[Ether].dst == old_mac:
+                packet[Ether].dst = new_mac
+                modified = True
     
     # 处理IP层
     if IP in packet:
