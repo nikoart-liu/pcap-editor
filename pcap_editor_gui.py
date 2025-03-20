@@ -410,7 +410,7 @@ class PCAPEditorGUI(QMainWindow):
         if self.enable_payload_edit.isChecked():
             params['offset'] = self.offset_spin.value()
             params['length'] = self.length_spin.value()
-            params['data'] = self.data_edit.text()
+            params['data'] = self.data_edit.toPlainText()  # 修改这里：使用 toPlainText() 替代 text()
         else:
             params['offset'] = None
             params['length'] = None
