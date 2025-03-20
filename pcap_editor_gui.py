@@ -11,7 +11,8 @@ import os
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                             QPushButton, QLabel, QLineEdit, QFileDialog, QGroupBox, 
                             QFormLayout, QTableWidget, QTableWidgetItem, QHeaderView, 
-                            QMessageBox, QTabWidget, QTextEdit, QSpinBox, QCheckBox)
+                            QMessageBox, QTabWidget, QTextEdit, QSpinBox, QCheckBox, 
+                            QMenu, QInputDialog)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon, QFont
 
@@ -213,6 +214,10 @@ class PCAPEditorGUI(QMainWindow):
         ])
         self.packet_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         preview_layout.addWidget(self.packet_table)
+        
+        # 在添加数据包表格后添加右键菜单支持
+        self.packet_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.packet_table.customContextMenuRequested.connect(self.show_packet_context_menu)
         
         # 添加数据包详情区域
         packet_details_group = QGroupBox("数据包详情")
@@ -738,6 +743,87 @@ class PCAPEditorGUI(QMainWindow):
             self.log(f"生成统计信息时出错: {str(e)}")
             QMessageBox.critical(self, "错误", f"生成统计信息时出错:\n{str(e)}")
 
+    def show_packet_context_menu(self, position):
+        """显示数据包右键菜单"""
+        if not self.packets:
+            return
+            
+        menu = QMenu()
+        modify_menu = menu.addMenu("修改数据包")
+        
+        # 添加修改选项
+        modify_src_mac = modify_menu.addAction("修改源MAC")
+        modify_dst_mac = modify_menu.addAction("修改目标MAC")
+        modify_src_ip = modify_menu.addAction("修改源IP")
+        modify_dst_ip = modify_menu.addAction("修改目标IP")
+        
+        # 获取选中的行
+        row = self.packet_table.currentRow()
+        if row >= 0:
+            action = menu.exec_(self.packet_table.mapToGlobal(position))
+            if action == modify_src_mac:
+                self.modify_packet_field(row, 'src_mac')
+            elif action == modify_dst_mac:
+                self.modify_packet_field(row, 'dst_mac')
+            elif action == modify_src_ip:
+                self.modify_packet_field(row, 'src_ip')
+            elif action == modify_dst_ip:
+                self.modify_packet_field(row, 'dst_ip')
+
+    def modify_packet_field(self, row, field_type):
+        """修改数据包字段"""
+        packet = self.packets[row]
+        
+        # 获取当前值
+        current_value = ""
+        if field_type == 'src_mac' and Ether in packet:
+            current_value = packet[Ether].src
+        elif field_type == 'dst_mac' and Ether in packet:
+            current_value = packet[Ether].dst
+        elif field_type == 'src_ip' and IP in packet:
+            current_value = packet[IP].src
+        elif field_type == 'dst_ip' and IP in packet:
+            current_value = packet[IP].dst
+        
+        # 弹出输入对话框
+        new_value, ok = QInputDialog.getText(
+            self,
+            f"修改数据包 #{row+1}",
+            f"请输入新的{field_type}值:",
+            text=current_value
+        )
+        
+        if ok and new_value:
+            try:
+                # 修改数据包
+                if field_type == 'src_mac' and Ether in packet:
+                    packet[Ether].src = new_value
+                elif field_type == 'dst_mac' and Ether in packet:
+                    packet[Ether].dst = new_value
+                elif field_type == 'src_ip' and IP in packet:
+                    packet[IP].src = new_value
+                elif field_type == 'dst_ip' and IP in packet:
+                    packet[IP].dst = new_value
+                
+                # 更新表格显示
+                if field_type == 'src_mac':
+                    self.packet_table.setItem(row, 2, QTableWidgetItem(new_value))
+                elif field_type == 'dst_mac':
+                    self.packet_table.setItem(row, 3, QTableWidgetItem(new_value))
+                elif field_type == 'src_ip':
+                    self.packet_table.setItem(row, 4, QTableWidgetItem(new_value))
+                elif field_type == 'dst_ip':
+                    self.packet_table.setItem(row, 5, QTableWidgetItem(new_value))
+                
+                # 更新数据包详情显示
+                if row == self.packet_table.currentRow():
+                    self.show_packet_details()
+                
+                # 记录修改日志
+                self.log(f"已修改数据包 #{row+1} 的 {field_type} 为: {new_value}")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"修改失败: {str(e)}")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
