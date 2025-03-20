@@ -139,18 +139,30 @@ class PCAPEditorGUI(QMainWindow):
         tabs.currentChanged.connect(self.on_tab_changed)
         
         # IP修改选项卡之前添加MAC修改选项卡
+        # MAC修改选项卡
         mac_tab = QWidget()
         mac_layout = QFormLayout(mac_tab)
         
-        self.src_mac_edit = QLineEdit()
-        self.src_mac_edit.setPlaceholderText("格式: 00:11:22:33:44:55>aa:bb:cc:dd:ee:ff")
-        self.src_mac_edit.setMinimumWidth(300)
-        mac_layout.addRow("修改源MAC:", self.src_mac_edit)
+        # 修改源MAC的两个输入框
+        src_mac_layout = QHBoxLayout()
+        self.old_src_mac_edit = QLineEdit()
+        self.old_src_mac_edit.setPlaceholderText("原始源MAC")
+        self.new_src_mac_edit = QLineEdit()
+        self.new_src_mac_edit.setPlaceholderText("新源MAC")
+        src_mac_layout.addWidget(self.old_src_mac_edit)
+        src_mac_layout.addWidget(QLabel("→"))
+        src_mac_layout.addWidget(self.new_src_mac_edit)
+        mac_layout.addRow("修改源MAC:", src_mac_layout)
         
-        self.dst_mac_edit = QLineEdit()
-        self.dst_mac_edit.setPlaceholderText("格式: 00:11:22:33:44:55>aa:bb:cc:dd:ee:ff")
-        self.dst_mac_edit.setMinimumWidth(300)
-        mac_layout.addRow("修改目标MAC:", self.dst_mac_edit)
+        dst_mac_layout = QHBoxLayout()
+        self.old_dst_mac_edit = QLineEdit()
+        self.old_dst_mac_edit.setPlaceholderText("原始目标MAC")
+        self.new_dst_mac_edit = QLineEdit()
+        self.new_dst_mac_edit.setPlaceholderText("新目标MAC")
+        dst_mac_layout.addWidget(self.old_dst_mac_edit)
+        dst_mac_layout.addWidget(QLabel("→"))
+        dst_mac_layout.addWidget(self.new_dst_mac_edit)
+        mac_layout.addRow("修改目标MAC:", dst_mac_layout)
         
         tabs.addTab(mac_tab, "MAC选项")
         
@@ -158,23 +170,50 @@ class PCAPEditorGUI(QMainWindow):
         ip_tab = QWidget()
         ip_layout = QFormLayout(ip_tab)
         
-        self.src_ip_edit = QLineEdit()
-        self.src_ip_edit.setPlaceholderText("格式: 192.168.1.1:10.0.0.1")
-        self.src_ip_edit.setMinimumWidth(300)
-        ip_layout.addRow("修改源IP:", self.src_ip_edit)
+        # 修改源IP的两个输入框
+        src_ip_layout = QHBoxLayout()
+        self.old_src_ip_edit = QLineEdit()
+        self.old_src_ip_edit.setPlaceholderText("原始源IP")
+        self.new_src_ip_edit = QLineEdit()
+        self.new_src_ip_edit.setPlaceholderText("新源IP")
+        src_ip_layout.addWidget(self.old_src_ip_edit)
+        src_ip_layout.addWidget(QLabel("→"))
+        src_ip_layout.addWidget(self.new_src_ip_edit)
+        ip_layout.addRow("修改源IP:", src_ip_layout)
         
-        self.dst_ip_edit = QLineEdit()
-        self.dst_ip_edit.setPlaceholderText("格式: 192.168.1.2:10.0.0.2")
-        self.dst_ip_edit.setMinimumWidth(300)
-        ip_layout.addRow("修改目标IP:", self.dst_ip_edit)
+        # 修改目标IP的两个输入框
+        dst_ip_layout = QHBoxLayout()
+        self.old_dst_ip_edit = QLineEdit()
+        self.old_dst_ip_edit.setPlaceholderText("原始目标IP")
+        self.new_dst_ip_edit = QLineEdit()
+        self.new_dst_ip_edit.setPlaceholderText("新目标IP")
+        dst_ip_layout.addWidget(self.old_dst_ip_edit)
+        dst_ip_layout.addWidget(QLabel("→"))
+        dst_ip_layout.addWidget(self.new_dst_ip_edit)
+        ip_layout.addRow("修改目标IP:", dst_ip_layout)
         
-        self.ttl_edit = QLineEdit()
-        self.ttl_edit.setPlaceholderText("格式: 64:128")
-        ip_layout.addRow("修改TTL值:", self.ttl_edit)
+        # IP修改选项卡内容
+        # 修改TTL的两个输入框
+        ttl_layout = QHBoxLayout()
+        self.old_ttl_edit = QLineEdit()
+        self.old_ttl_edit.setPlaceholderText("原始TTL")
+        self.new_ttl_edit = QLineEdit()
+        self.new_ttl_edit.setPlaceholderText("新TTL")
+        ttl_layout.addWidget(self.old_ttl_edit)
+        ttl_layout.addWidget(QLabel("→"))
+        ttl_layout.addWidget(self.new_ttl_edit)
+        ip_layout.addRow("修改TTL值:", ttl_layout)
         
-        self.tos_edit = QLineEdit()
-        self.tos_edit.setPlaceholderText("格式: 0:16")
-        ip_layout.addRow("修改TOS值:", self.tos_edit)
+        # 修改TOS的两个输入框
+        tos_layout = QHBoxLayout()
+        self.old_tos_edit = QLineEdit()
+        self.old_tos_edit.setPlaceholderText("原始TOS")
+        self.new_tos_edit = QLineEdit()
+        self.new_tos_edit.setPlaceholderText("新TOS")
+        tos_layout.addWidget(self.old_tos_edit)
+        tos_layout.addWidget(QLabel("→"))
+        tos_layout.addWidget(self.new_tos_edit)
+        ip_layout.addRow("修改TOS值:", tos_layout)
         
         tabs.addTab(ip_tab, "IP选项")
         
@@ -182,13 +221,27 @@ class PCAPEditorGUI(QMainWindow):
         port_tab = QWidget()
         port_layout = QFormLayout(port_tab)
         
-        self.src_port_edit = QLineEdit()
-        self.src_port_edit.setPlaceholderText("格式: 80:8080")
-        port_layout.addRow("修改源端口:", self.src_port_edit)
+        # 修改源端口的两个输入框
+        src_port_layout = QHBoxLayout()
+        self.old_src_port_edit = QLineEdit()
+        self.old_src_port_edit.setPlaceholderText("原始源端口")
+        self.new_src_port_edit = QLineEdit()
+        self.new_src_port_edit.setPlaceholderText("新源端口")
+        src_port_layout.addWidget(self.old_src_port_edit)
+        src_port_layout.addWidget(QLabel("→"))
+        src_port_layout.addWidget(self.new_src_port_edit)
+        port_layout.addRow("修改源端口:", src_port_layout)
         
-        self.dst_port_edit = QLineEdit()
-        self.dst_port_edit.setPlaceholderText("格式: 80:8080")
-        port_layout.addRow("修改目标端口:", self.dst_port_edit)
+        # 修改目标端口的两个输入框
+        dst_port_layout = QHBoxLayout()
+        self.old_dst_port_edit = QLineEdit()
+        self.old_dst_port_edit.setPlaceholderText("原始目标端口")
+        self.new_dst_port_edit = QLineEdit()
+        self.new_dst_port_edit.setPlaceholderText("新目标端口")
+        dst_port_layout.addWidget(self.old_dst_port_edit)
+        dst_port_layout.addWidget(QLabel("→"))
+        dst_port_layout.addWidget(self.new_dst_port_edit)
+        port_layout.addRow("修改目标端口:", dst_port_layout)
         
         tabs.addTab(port_tab, "端口选项")
         
@@ -343,14 +396,14 @@ class PCAPEditorGUI(QMainWindow):
         
         # 收集参数
         params = {
-            'src_mac': self.src_mac_edit.text() if self.src_mac_edit.text() else None,
-            'dst_mac': self.dst_mac_edit.text() if self.dst_mac_edit.text() else None,
-            'src_ip': self.src_ip_edit.text() if self.src_ip_edit.text() else None,
-            'dst_ip': self.dst_ip_edit.text() if self.dst_ip_edit.text() else None,
-            'src_port': self.src_port_edit.text() if self.src_port_edit.text() else None,
-            'dst_port': self.dst_port_edit.text() if self.dst_port_edit.text() else None,
-            'ttl': self.ttl_edit.text() if self.ttl_edit.text() else None,
-            'tos': self.tos_edit.text() if self.tos_edit.text() else None,
+            'src_mac': f"{self.old_src_mac_edit.text()}>{self.new_src_mac_edit.text()}" if (self.old_src_mac_edit.text() and self.new_src_mac_edit.text()) else None,
+            'dst_mac': f"{self.old_dst_mac_edit.text()}>{self.new_dst_mac_edit.text()}" if (self.old_dst_mac_edit.text() and self.new_dst_mac_edit.text()) else None,
+            'src_ip': f"{self.old_src_ip_edit.text()}:{self.new_src_ip_edit.text()}" if (self.old_src_ip_edit.text() and self.new_src_ip_edit.text()) else None,
+            'dst_ip': f"{self.old_dst_ip_edit.text()}:{self.new_dst_ip_edit.text()}" if (self.old_dst_ip_edit.text() and self.new_dst_ip_edit.text()) else None,
+            'src_port': f"{self.old_src_port_edit.text()}:{self.new_src_port_edit.text()}" if (self.old_src_port_edit.text() and self.new_src_port_edit.text()) else None,
+            'dst_port': f"{self.old_dst_port_edit.text()}:{self.new_dst_port_edit.text()}" if (self.old_dst_port_edit.text() and self.new_dst_port_edit.text()) else None,
+            'ttl': f"{self.old_ttl_edit.text()}:{self.new_ttl_edit.text()}" if (self.old_ttl_edit.text() and self.new_ttl_edit.text()) else None,
+            'tos': f"{self.old_tos_edit.text()}:{self.new_tos_edit.text()}" if (self.old_tos_edit.text() and self.new_tos_edit.text()) else None,
         }
         
         # 如果启用了Payload修改，添加相关参数
