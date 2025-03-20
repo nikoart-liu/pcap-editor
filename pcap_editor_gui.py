@@ -207,8 +207,10 @@ class PCAPEditorGUI(QMainWindow):
         
         # 添加数据包表格
         self.packet_table = QTableWidget()
-        self.packet_table.setColumnCount(7)
-        self.packet_table.setHorizontalHeaderLabels(["序号", "时间", "源IP", "目标IP", "协议", "长度", "信息"])
+        self.packet_table.setColumnCount(9)  # 修改为9列以包含MAC地址
+        self.packet_table.setHorizontalHeaderLabels([
+            "序号", "时间", "源MAC", "目标MAC", "源IP", "目标IP", "协议", "长度", "信息"
+        ])
         self.packet_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         preview_layout.addWidget(self.packet_table)
         
@@ -491,7 +493,33 @@ class PCAPEditorGUI(QMainWindow):
         self.packet_details_text.clear()
         self.packet_details_text.append(f"<h3>数据包 #{row+1} 详情</h3>")
         
+        # 添加基本信息摘要
+        if Ether in packet:
+            self.packet_details_text.append(f"<p><b>源MAC:</b> {packet[Ether].src}</p>")
+            self.packet_details_text.append(f"<p><b>目的MAC:</b> {packet[Ether].dst}</p>")
+        
+        if IP in packet:
+            self.packet_details_text.append(f"<p><b>源IP:</b> {packet[IP].src}</p>")
+            self.packet_details_text.append(f"<p><b>目的IP:</b> {packet[IP].dst}</p>")
+            self.packet_details_text.append(f"<p><b>TTL:</b> {packet[IP].ttl}</p>")
+            self.packet_details_text.append(f"<p><b>TOS:</b> {packet[IP].tos}</p>")
+        
+        if TCP in packet:
+            self.packet_details_text.append(f"<p><b>协议:</b> TCP</p>")
+            self.packet_details_text.append(f"<p><b>源端口:</b> {packet[TCP].sport}</p>")
+            self.packet_details_text.append(f"<p><b>目的端口:</b> {packet[TCP].dport}</p>")
+            self.packet_details_text.append(f"<p><b>TCP标志:</b> {packet[TCP].flags}</p>")
+        elif UDP in packet:
+            self.packet_details_text.append(f"<p><b>协议:</b> UDP</p>")
+            self.packet_details_text.append(f"<p><b>源端口:</b> {packet[UDP].sport}</p>")
+            self.packet_details_text.append(f"<p><b>目的端口:</b> {packet[UDP].dport}</p>")
+        elif ICMP in packet:
+            self.packet_details_text.append(f"<p><b>协议:</b> ICMP</p>")
+            self.packet_details_text.append(f"<p><b>类型:</b> {packet[ICMP].type}</p>")
+            self.packet_details_text.append(f"<p><b>代码:</b> {packet[ICMP].code}</p>")
+        
         # 显示原始数据包信息
+        self.packet_details_text.append("<h4>原始数据包信息</h4>")
         self.packet_details_text.append("<pre>")
         packet_info = packet.show(dump=True)
         self.packet_details_text.append(packet_info)
