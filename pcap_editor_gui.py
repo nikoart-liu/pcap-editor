@@ -999,6 +999,11 @@ class PCAPEditorGUI(QMainWindow):
                               f"修复了 {repaired_count} 个数据包的二层信息")
 
 if __name__ == '__main__':
+    def load_stylesheet(app, filename="style.qss"):
+        with open(filename, "r") as file:
+            app.setStyleSheet(file.read())
+
     app = QApplication(sys.argv)
+    load_stylesheet(app)
     ex = PCAPEditorGUI()
     sys.exit(app.exec_())
